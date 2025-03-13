@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Score Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        input {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+        }
+        .add-row {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            font-size: 16px;
+            border-radius: 50%;
+            margin: 5px;
+        }
+        .header-info {
+            font-size: 12px;
+            display: block;
+            color: #666;
+            margin-top: 5px;
+        }
+        .calculated-cell {
+            background-color: #e6f7ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Audit Score Calculator</h1>
+    
+    <div style="overflow-x: auto;">
+        <table id="auditTable">
+            <thead>
+                <tr>
+                    <th>Name <span class="header-info">Worker being audited</span></th>
+                    <th>Actual Throughput (ATP) <span class="header-info">Optional if PETP is entered manually</span></th>
+                    <th>Expected Throughput (ETP) <span class="header-info">Optional if PETP is entered manually</span></th>
+                    <th>% of Expected Throughput (PETP) <span class="header-info">Manual entry or calculated from ATP/ETP</span></th>
+                    <th>Productivity Score (PS) <span class="header-info">Calculated from PETP</span></th>
+                    <th>Quality Score (QS) <span class="header-info">Enter manually (0-7)</span></th>
+                    <th>Overall Score (OS) <span class="header-info">PS + AQS</span></th>
+                    <th>Comments <span class="header-info">Feedback notes</span></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td><input type="text" class="name-input" placeholder="Enter name..."></td>
+                    <td><input type="number" class="atp-input" placeholder="Enter ATP..." min="0" step="0.01"></td>
+                    <td><input type="number" class="etp-input" placeholder="Enter ETP..." min="0" step="0.01"></td>
+                    <td><input type="number" class="petp-input" placeholder="Enter PETP..." min="0" step="0.01"> %</td>
+                    <td class="ps-cell calculated-cell"></td>
+                    <td><input type="number" class="qs-input" placeholder="Enter QS..." min="0" max="7" step="0.1"></td>
+                    <td class="os-cell calculated-cell"></td>
+                    <td><input type="text" class="comments-input" placeholder="Enter comments..."></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <button id="addRowBtn" class="add-row">+</button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tableBody = document.getElementById('tableBody');
+            const addRowBtn = document.getElementById('addRowBtn');
+            
+            // Function to calculate Productivity Score
+            function calculateProductivityScore(PET) {
+                if (PET <= 70) {
+                    return PET / 70; // Maps 0-70% to 0-1 points
+                } else if (PET <= 100) {
+                    return 1 + (PET - 70) / 30; // Maps 70-100% to 1-2 points
+                } else if (PET <= 140) {
+                    return 2 + (PET - 100) / 40; // Maps 100-140% to 2-3 points
+                } else {
+                    return 3; // Caps at 3 points for anything above 140%
+                }
+            }
+            
+            // Function to calculate Adjusted Quality Score
+            function calculateAdjustedQualityScore(QS) {
+                if (QS <= 6) {
+                    return QS;
+                } else if (QS >= 6.5) {
+                    return 7;
+                } else {
+                    return 6 + (QS - 6) * 2;
+                }
+            }
+            
+            // Function to add a new row
+            function addRow() {
+                if (tableBody.rows.length >= 100) {
+                    alert("Maximum of 100 rows reached!");
+                    return;
+                }
+                
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td><input type="text" class="name-input" placeholder="Enter name..."></td>
+                    <td><input type="number" class="atp-input" placeholder="Enter ATP..." min="0" step="0.01"></td>
+                    <td><input type="number" class="etp-input" placeholder="Enter ETP..." min="0" step="0.01"></td>
+                    <td><input type="number" class="petp-input" placeholder="Enter PETP..." min="0" step="0.01"> %</td>
+                    <td class="ps-cell calculated-cell"></td>
+                    <td><input type="number" class="qs-input" placeholder="Enter QS..." min="0" max="7" step="0.1"></td>
+                    <td class="os-cell calculated-cell"></td>
+                    <td><input type="text" class="comments-input" placeholder="Enter comments..."></td>
+                `;
+                tableBody.appendChild(newRow);
+                
+                // Add event listeners to the new row
+                attachRowEventListeners(newRow);
+            }
+            
+            // Function to attach event listeners to a row
+            function attachRowEventListeners(row) {
+                const atpInput = row.querySelector('.atp-input');
+                const etpInput = row.querySelector('.etp-input');
+                const petpInput = row.querySelector('.petp-input');
+                const qsInput = row.querySelector('.qs-input');
+                const psCell = row.querySelector('.ps-cell');
+                const osCell = row.querySelector('.os-cell');
+                
+                // Calculate PETP when ATP or ETP changes
+                function updatePETP() {
+                    const atp = parseFloat(atpInput.value);
+                    const etp = parseFloat(etpInput.value);
+                    
+                    if (!isNaN(atp) && !isNaN(etp) && etp !== 0) {
+                        const petp = (atp / etp) * 100;
+                        petpInput.value = petp.toFixed(2);
+                        updateScores();
+                    }
+                }
+                
+                // Update PS and OS when PETP or QS changes
+                function updateScores() {
+                    const petp = parseFloat(petpInput.value);
+                    const qs = parseFloat(qsInput.value);
+                    
+                    if (!isNaN(petp)) {
+                        const ps = calculateProductivityScore(petp);
+                        psCell.textContent = ps.toFixed(2);
+                        
+                        if (!isNaN(qs)) {
+                            const aqs = calculateAdjustedQualityScore(qs);
+                            const os = ps + aqs;
+                            osCell.textContent = os.toFixed(2);
+                        } else {
+                            osCell.textContent = '';
+                        }
+                    } else {
+                        psCell.textContent = '';
+                        osCell.textContent = '';
+                    }
+                }
+                
+                atpInput.addEventListener('input', updatePETP);
+                etpInput.addEventListener('input', updatePETP);
+                petpInput.addEventListener('input', updateScores);
+                qsInput.addEventListener('input', updateScores);
+            }
+            
+            // Add event listener to the add row button
+            addRowBtn.addEventListener('click', addRow);
+            
+            // Attach event listeners to the initial row
+            attachRowEventListeners(tableBody.rows[0]);
+        });
+    </script>
+</body>
+</html>
