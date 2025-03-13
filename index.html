@@ -72,7 +72,7 @@
                     <th>% of Expected Throughput (PETP) <span class="header-info">Manual entry or calculated from ATP/ETP</span></th>
                     <th>Productivity Score (PS) <span class="header-info">Calculated from PETP</span></th>
                     <th>Quality Score (QS) <span class="header-info">Enter manually (0-7)</span></th>
-                    <th>Overall Score (OS) <span class="header-info">(PS + AQS)/2</span></th>
+                    <th>Overall Score (OS) <span class="header-info">PS + AQS</span></th>
                     <th>Comments <span class="header-info">Feedback notes</span></th>
                 </tr>
             </thead>
@@ -178,7 +178,7 @@
                         
                         if (!isNaN(qs)) {
                             const aqs = calculateAdjustedQualityScore(qs);
-                            const os = (ps + aqs) / 2;
+                            const os = ps + aqs;
                             osCell.textContent = os.toFixed(2);
                         } else {
                             osCell.textContent = '';
